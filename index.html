@@ -399,12 +399,22 @@ function searchForPayment(){
   var q=document.getElementById('p-search').value.trim().toLowerCase();
   var res=document.getElementById('p-results');
   if(!q){res.innerHTML='';document.getElementById('pay-form-card').style.display='none';return;}
-  var found=customers.filter(function(c){return c.serial.toLowerCase().includes(q)||c.name.toLowerCase().includes(q)||c.box.toLowerCase().includes(q)||(c.phone&&c.phone.includes(q));});
+  
+  var found=customers.filter(function(c){
+    // Added safe checks using (c.field && ...) to prevent crashes on missing or undefined data
+    var serialMatch = c.serial ? String(c.serial).toLowerCase().includes(q) : false;
+    var nameMatch = c.name ? String(c.name).toLowerCase().includes(q) : false;
+    var boxMatch = c.box ? String(c.box).toLowerCase().includes(q) : false;
+    var phoneMatch = c.phone ? String(c.phone).includes(q) : false;
+    
+    return serialMatch || nameMatch || boxMatch || phoneMatch;
+  });
+  
   if(!found.length){res.innerHTML='<div class="empty">No customers found.</div>';document.getElementById('pay-form-card').style.display='none';return;}
   res.innerHTML=found.map(function(c){
-    return '<div class="customer-card" onclick="selectPayCust(\''+c.serial+'\')">'+
-      '<div class="cust-row"><span class="cust-name">'+c.name+'</span><span class="badge badge-brand">'+c.serial+'</span></div>'+
-      '<div class="cust-detail">Box: '+c.box+' | '+c.pkg+' | Rs.'+c.price+'/mo</div>'+phoneHtml(c.phone)+'</div>';
+    return '<div class="customer-card" onclick="selectPayCust(\''+(c.serial || '')+'\')">'+
+      '<div class="cust-row"><span class="cust-name">'+(c.name || 'Unnamed')+'</span><span class="badge badge-brand">'+(c.serial || 'N/A')+'</span></div>'+
+      '<div class="cust-detail">Box: '+(c.box || 'N/A')+' | '+(c.pkg || 'N/A')+' | Rs.'+(c.price || 0)+'/mo</div>'+phoneHtml(c.phone)+'</div>';
   }).join('');
 }
 
@@ -454,14 +464,20 @@ function searchCustomers(){
   var q=document.getElementById('s-query').value.trim().toLowerCase();
   var res=document.getElementById('s-results');
   if(!q){res.innerHTML=renderAllCustomers();return;}
+  
   var found=customers.filter(function(c){
-    return c.name.toLowerCase().includes(q)||c.serial.toLowerCase().includes(q)||
-      c.box.toLowerCase().includes(q)||c.address.toLowerCase().includes(q)||(c.phone&&c.phone.includes(q));
+    var nameMatch = c.name ? String(c.name).toLowerCase().includes(q) : false;
+    var serialMatch = c.serial ? String(c.serial).toLowerCase().includes(q) : false;
+    var boxMatch = c.box ? String(c.box).toLowerCase().includes(q) : false;
+    var addressMatch = c.address ? String(c.address).toLowerCase().includes(q) : false;
+    var phoneMatch = c.phone ? String(c.phone).includes(q) : false;
+    
+    return nameMatch || serialMatch || boxMatch || addressMatch || phoneMatch;
   });
-  res.innerHTML=found.length?found.map(function(c){return cardHtml(c,"showDetail('"+c.serial+"')");}).join(''):
+  
+  res.innerHTML=found.length?found.map(function(c){return cardHtml(c,"showDetail('"+(c.serial || '')+"')");}).join(''):
     '<div class="empty">No matching customers.</div>';
 }
-
 // ── MODAL MANAGEMENT ──
 function showDetail(serial){
   var c=customers.find(function(x){return x.serial===serial;});if(!c)return;
