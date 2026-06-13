@@ -10,52 +10,7 @@
 <link rel="manifest" href="manifest.json">
 <title>Ram Cable Networks</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<!-- Firebase -->
-<script type="module">
-import{initializeApp}from'https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js';
-import{getFirestore,collection,doc,setDoc,deleteDoc,onSnapshot,getDocs,query,orderBy}from'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
-const cfg={
-  apiKey:"AIzaSyBraoDUnDm0wRh-9CqsgvsHim5CFbq0_j8",
-  authDomain:"ram-cable-652a1.firebaseapp.com",
-  projectId:"ram-cable-652a1",
-  storageBucket:"ram-cable-652a1.firebasestorage.app",
-  messagingSenderId:"588763188093",
-  appId:"1:588763188093:web:5fa73cbca9d797a25cda14"
-};
-const app=initializeApp(cfg);
-const db=getFirestore(app);
-// expose to global
-window._db=db;
-window._col=collection;
-window._doc=doc;
-window._set=setDoc;
-window._del=deleteDoc;
-window._snap=onSnapshot;
-window._get=getDocs;
-// listen customers
-window._snap(window._col(db,'customers'),function(s){
-  window.customers=[];
-  s.forEach(function(d){window.customers.push(Object.assign({},d.data(),{_fid:d.id}));});
-  window.updateCount&&window.updateCount();
-  window.renderReport&&window.renderReport();
-  var sr=document.getElementById('s-results');
-  if(sr&&sr.dataset.active)sr.innerHTML=window.renderAllCustomers();
-});
-// listen payments
-window._snap(window._col(db,'payments'),function(s){
-  window.payments=[];
-  s.forEach(function(d){window.payments.push(Object.assign({},d.data(),{_fid:d.id}));});
-  window.renderReport&&window.renderReport();
-  var mm=document.getElementById('m-month');
-  if(mm&&mm.dataset.active)window.renderMonthly&&window.renderMonthly();
-});
-window._fbReady=true;
-// show synced bar
-setTimeout(function(){
-  var b=document.getElementById('sync-bar');
-  if(b){b.style.opacity='1';setTimeout(function(){b.style.opacity='0';},2000);}
-},1500);
-</script>
+
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{font-family:Arial,sans-serif;background:#f0f4fa;color:#1a1a2e;min-height:100vh;font-size:15px}
@@ -176,7 +131,6 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <div class="tab" onclick="showTab('report')"><span class="tab-icon">📊</span>Report</div>
   </div>
 
-  <!-- ADD -->
   <div id="tab-add" class="section active">
     <div id="add-alert" class="alert" style="display:none"></div>
     <div class="card">
@@ -205,7 +159,6 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     </div>
   </div>
 
-  <!-- PAYMENT -->
   <div id="tab-payment" class="section">
     <div id="pay-alert" class="alert" style="display:none"></div>
     <div class="card">
@@ -238,13 +191,11 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     </div>
   </div>
 
-  <!-- SEARCH -->
   <div id="tab-search" class="section">
     <div class="search-box"><input id="s-query" type="text" placeholder="Search by name, serial no., phone or box no." oninput="searchCustomers()"></div>
     <div id="s-results"></div>
   </div>
 
-  <!-- MONTHLY -->
   <div id="tab-monthly" class="section">
     <div class="card">
       <div class="accent-bar"></div>
@@ -264,13 +215,11 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <div id="monthly-results"></div>
   </div>
 
-  <!-- REPORT -->
   <div id="tab-report" class="section">
     <div id="report-content"></div>
   </div>
 </div>
 
-<!-- DETAIL MODAL -->
 <div id="detail-modal" class="overlay" onclick="closeModal(event)">
   <div class="sheet">
     <div class="sheet-handle"></div>
@@ -280,7 +229,6 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   </div>
 </div>
 
-<!-- DELETE CONFIRM -->
 <div id="confirm-box" class="confirm-box">
   <div class="confirm-inner">
     <h3>Delete Customer?</h3>
@@ -291,6 +239,18 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     </div>
   </div>
 </div>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('./sw.js').then(function(reg) {
+      console.log('ServiceWorker registered successfully with scope: ', reg.scope);
+    }).catch(function(err) {
+      console.error('ServiceWorker registration failed: ', err);
+    });
+  });
+}
+</script>
 
 <script>
 var customers=[],payments=[],selectedPayCust=null,deleteSerial=null;
@@ -304,14 +264,17 @@ function phoneHtml(phone){
 
 function updateCount(){
   var n=customers.length;
-  document.getElementById('cust-count').textContent=n+' customer'+(n!==1?'s':'');
+  var el = document.getElementById('cust-count');
+  if(el) el.textContent=n+' customer'+(n!==1?'s':'');
 }
 window.updateCount=updateCount;
 
 function showAlert(id,msg,type){
   var el=document.getElementById(id);
-  el.className='alert alert-'+type;el.textContent=msg;el.style.display='block';
-  setTimeout(function(){el.style.display='none';},3500);
+  if(el){
+    el.className='alert alert-'+type;el.textContent=msg;el.style.display='block';
+    setTimeout(function(){el.style.display='none';},3500);
+  }
 }
 
 function changeLogo(input){
@@ -340,7 +303,7 @@ function loadSavedLogo(){
   }catch(e){}
 }
 
-// ── FIREBASE SAVE/DELETE ──
+// ── FIREBASE ACTIONS PROXIES ──
 function fbKey(str){return str.replace(/[^a-zA-Z0-9]/g,'_');}
 
 function fbSaveCust(c){
@@ -365,12 +328,12 @@ function fbSavePay(p){
   var key=fbKey(p.serial+'_'+p.month);
   window._set(window._doc(window._db,'payments',key),{
     serial:p.serial,custName:p.custName,month:p.month,
-    amount:p.amount,status:p.status,date:p.date||'',
+    amount:Number(p.amount),status:p.status,date:p.date||'',
     timestamp:new Date().toISOString()
   });
 }
 
-// ── TAB NAVIGATION ──
+// ── NAVIGATION & VIEWS ──
 function showTab(t){
   document.querySelectorAll('.section').forEach(function(s){s.classList.remove('active');});
   document.querySelectorAll('.tab').forEach(function(tb){tb.classList.remove('active');});
@@ -396,7 +359,7 @@ function handlePkgSelect(){
     document.getElementById('a-pkg-select').value==='custom'?'block':'none';
 }
 
-// ── ADD CUSTOMER ──
+// ── CUSTOMER ENGINE ──
 function addCustomer(){
   var serial=document.getElementById('a-serial').value.trim();
   var name=document.getElementById('a-name').value.trim();
@@ -417,7 +380,6 @@ function addCustomer(){
   document.getElementById('a-pkg-custom').style.display='none';
 }
 
-// ── DELETE ──
 function askDelete(serial,name,event){
   event.stopPropagation();deleteSerial=serial;
   document.getElementById('confirm-msg').textContent='Delete "'+name+'"? All payment records will also be deleted.';
@@ -432,7 +394,7 @@ function confirmDelete(){
   showTab('search');
 }
 
-// ── PAYMENT SEARCH ──
+// ── RECORD PAYMENT OPERATIONS ──
 function searchForPayment(){
   var q=document.getElementById('p-search').value.trim().toLowerCase();
   var res=document.getElementById('p-results');
@@ -473,7 +435,7 @@ function recordPayment(){
   selectedPayCust=null;
 }
 
-// ── CUSTOMER CARDS ──
+// ── CUSTOMER CARD GENERATORS ──
 function cardHtml(c,onclick){
   return '<div class="customer-card" onclick="'+onclick+'">'+
     '<div class="cust-row"><span class="cust-name">'+c.name+'</span><span class="badge badge-brand">'+c.serial+'</span></div>'+
@@ -500,11 +462,11 @@ function searchCustomers(){
     '<div class="empty">No matching customers.</div>';
 }
 
-// ── DETAIL MODAL ──
+// ── MODAL MANAGEMENT ──
 function showDetail(serial){
   var c=customers.find(function(x){return x.serial===serial;});if(!c)return;
   var cp=payments.filter(function(p){return p.serial===serial;}).sort(function(a,b){return a.month>b.month?-1:1;});
-  var tot=cp.filter(function(p){return p.status!=='pending';}).reduce(function(s,p){return s+p.amount;},0);
+  var tot=cp.filter(function(p){return p.status!=='pending';}).reduce(function(s,p){return s+(Number(p.amount)||0);},0);
   document.getElementById('modal-title').textContent=c.name;
   var h='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">';
   h+='<div class="stat-card"><div class="stat-label">Serial no.</div><div class="stat-value">'+c.serial+'</div></div>';
@@ -521,7 +483,7 @@ function showDetail(serial){
     cp.forEach(function(p){
       var bc=p.status==='paid'?'badge-green':p.status==='partial'?'badge-amber':'badge-red';
       h+='<div class="payment-row"><div><div class="pay-month">'+p.month+'</div><div style="font-size:11px;color:#888">'+p.date+'</div></div>'+
-        '<div style="text-align:right"><div style="font-size:14px;font-weight:700;color:#0d3b8c">Rs.'+p.amount.toLocaleString('en-IN')+'</div>'+
+        '<div style="text-align:right"><div style="font-size:14px;font-weight:700;color:#0d3b8c">Rs.'+(Number(p.amount)||0).toLocaleString('en-IN')+'</div>'+
         '<span class="badge '+bc+'">'+p.status.charAt(0).toUpperCase()+p.status.slice(1)+'</span></div></div>';
     });
   } else h+='<div style="color:#888;font-size:13px;padding:10px 0">No payments recorded yet.</div>';
@@ -531,7 +493,7 @@ function showDetail(serial){
 }
 function closeModal(e){if(e.target.id==='detail-modal')document.getElementById('detail-modal').classList.remove('open');}
 
-// ── MONTHLY ──
+// ── MONTHLY CALENDAR DATA METRICS ──
 var MONTHS=['Jan 2025','Feb 2025','Mar 2025','Apr 2025','May 2025','Jun 2025',
   'Jul 2025','Aug 2025','Sep 2025','Oct 2025','Nov 2025','Dec 2025',
   'Jan 2026','Feb 2026','Mar 2026','Apr 2026','May 2026','Jun 2026',
@@ -564,7 +526,9 @@ function parseDate(ds){
 }
 
 function getDayFromDate(ds){
-  if(!ds)return 0;var pts=ds.split('/');return pts.length===3?parseInt(pts[0]):0;
+  if(!ds)return 0;
+  var pts=ds.includes('/') ? ds.split('/') : ds.split('-');
+  return pts.length===3?(pts[0].length===4 ? parseInt(pts[2]) : parseInt(pts[0])):0;
 }
 
 function getDaysInMonth(ms){
@@ -574,9 +538,9 @@ function getDaysInMonth(ms){
 
 function onMonthChange(){
   var month=document.getElementById('m-month').value;
-  var mp=payments.filter(function(p){return p.month===month&&(p.status==='paid'||p.status==='partial');});
   var days=getDaysInMonth(month);
   var sel=document.getElementById('m-date');
+  if(!sel) return;
   sel.innerHTML='<option value="all">-- All days --</option>';
   for(var d=1;d<=days;d++){
     var opt=document.createElement('option');opt.value=d;opt.textContent='Day '+d;sel.appendChild(opt);
@@ -591,8 +555,8 @@ function renderMonthly(){
   var mp=payments.filter(function(p){return p.month===month;});
   var paid=mp.filter(function(p){return p.status==='paid';});
   var pending=mp.filter(function(p){return p.status==='pending';});
-  var collected=mp.filter(function(p){return p.status!=='pending';}).reduce(function(s,p){return s+p.amount;},0);
-  var totalExp=customers.reduce(function(s,c){return s+c.price;},0);
+  var collected=mp.filter(function(p){return p.status!=='pending';}).reduce(function(s,p){return s+(Number(p.amount)||0);},0);
+  var totalExp=customers.reduce(function(s,c){return s+(Number(c.price)||0);},0);
   var notRec=customers.filter(function(c){return !mp.find(function(p){return p.serial===c.serial;});});
   var carry=getCarryForward(month);
   var h='<div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:13px">';
@@ -608,7 +572,7 @@ function renderMonthly(){
       var sortedD=Object.keys(byDate).sort(function(a,b){return parseDate(a)-parseDate(b);});
       h+='<div class="section-title" style="color:#065f46">Date-wise payments</div>';
       sortedD.forEach(function(date){
-        var dt=byDate[date].reduce(function(s,p){return s+p.amount;},0);
+        var dt=byDate[date].reduce(function(s,p){return s+(Number(p.amount)||0);},0);
         var dn=getDayFromDate(date);
         h+='<div class="card" style="padding:10px 14px;margin-bottom:8px;border-left:4px solid #0d3b8c">';
         h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
@@ -617,7 +581,7 @@ function renderMonthly(){
         h+='<div style="font-size:12px;font-weight:700;color:#065f46;background:#d1fae5;padding:3px 9px;border-radius:20px">Rs.'+dt.toLocaleString('en-IN')+'</div></div>';
         byDate[date].forEach(function(p){
           h+='<div class="payment-row"><div><div class="pay-month">'+p.custName+'</div><div class="cust-detail">'+p.serial+'</div></div>'+
-            '<div style="text-align:right"><div style="font-weight:700;color:#0d3b8c">Rs.'+p.amount.toLocaleString('en-IN')+'</div>'+
+            '<div style="text-align:right"><div style="font-weight:700;color:#0d3b8c">Rs.'+(Number(p.amount)||0).toLocaleString('en-IN')+'</div>'+
             '<span class="badge '+(p.status==='paid'?'badge-green':'badge-amber')+'">'+p.status+'</span></div></div>';
         });
         h+='</div>';
@@ -647,14 +611,14 @@ function renderMonthly(){
     var dp=pap.filter(function(p){return getDayFromDate(p.date)===dn;});
     h+='<div class="section-title" style="color:#065f46">Day '+dn+' — Payments</div>';
     if(dp.length){
-      var dt=dp.reduce(function(s,p){return s+p.amount;},0);
+      var dt=dp.reduce(function(s,p){return s+(Number(p.amount)||0);},0);
       h+='<div class="card" style="padding:10px 14px;border-left:4px solid #0d3b8c">';
       h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">';
       h+='<div style="font-size:14px;font-weight:700;color:#0d3b8c">Day '+dn+' <span style="font-size:12px;color:#888">('+dp[0].date+')</span></div>';
       h+='<div style="font-size:13px;font-weight:700;color:#065f46;background:#d1fae5;padding:4px 11px;border-radius:20px">Total: Rs.'+dt.toLocaleString('en-IN')+'</div></div>';
       dp.forEach(function(p){
         h+='<div class="payment-row"><div><div class="pay-month">'+p.custName+'</div><div class="cust-detail">'+p.serial+' | '+p.date+'</div></div>'+
-          '<div style="text-align:right"><div style="font-weight:700;color:#0d3b8c">Rs.'+p.amount.toLocaleString('en-IN')+'</div>'+
+          '<div style="text-align:right"><div style="font-weight:700;color:#0d3b8c">Rs.'+(Number(p.amount)||0).toLocaleString('en-IN')+'</div>'+
           '<span class="badge '+(p.status==='paid'?'badge-green':'badge-amber')+'">'+p.status+'</span></div></div>';
       });
       h+='</div>';
@@ -664,11 +628,11 @@ function renderMonthly(){
 }
 window.renderMonthly=renderMonthly;
 
-// ── REPORT ──
+// ── DATA METRICS REPORTS ──
 function renderReport(){
   var total=customers.length;
-  var totalExp=customers.reduce(function(s,c){return s+c.price;},0);
-  var totalCol=payments.filter(function(p){return p.status!=='pending';}).reduce(function(s,p){return s+p.amount;},0);
+  var totalExp=customers.reduce(function(s,c){return s+(Number(c.price)||0);},0);
+  var totalCol=payments.filter(function(p){return p.status!=='pending';}).reduce(function(s,p){return s+(Number(p.amount)||0);},0);
   var pkgG={};customers.forEach(function(c){pkgG[c.pkg]=(pkgG[c.pkg]||0)+1;});
   var h='<button class="btn btn-export" onclick="exportToExcel()">'+
     '<svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM8 17l2.5-3.5L8 10h1.5l1.5 2.1 1.5-2.1H14l-2.5 3.5L14 17h-1.5L11 14.8 9.5 17H8z"/></svg>'+
@@ -689,7 +653,7 @@ function renderReport(){
 }
 window.renderReport=renderReport;
 
-// ── EXCEL EXPORT ──
+// ── EXCEL SPREADSHEET BUILDER ──
 function exportToExcel(){
   if(!customers.length){alert('No customers to export.');return;}
   var wb=XLSX.utils.book_new();
@@ -714,8 +678,8 @@ function exportToExcel(){
   });
   var ws2=XLSX.utils.aoa_to_sheet(pr);
   XLSX.utils.book_append_sheet(wb,ws2,'All Payments');
-  var totalExp=customers.reduce(function(s,c){return s+c.price;},0);
-  var totalCol=payments.filter(function(p){return p.status!=='pending';}).reduce(function(s,p){return s+p.amount;},0);
+  var totalExp=customers.reduce(function(s,c){return s+(Number(c.price)||0);},0);
+  var totalCol=payments.filter(function(p){return p.status!=='pending';}).reduce(function(s,p){return s+(Number(p.amount)||0);},0);
   var pkgG={};customers.forEach(function(c){pkgG[c.pkg]=(pkgG[c.pkg]||0)+1;});
   var sr=[['Ram Cable Networks - Report'],['Generated',new Date().toLocaleDateString('en-IN')],[],
     ['Total Customers',customers.length],['Monthly Revenue (Rs)',totalExp],['All-time Collected (Rs)',totalCol],[],
@@ -724,20 +688,72 @@ function exportToExcel(){
   XLSX.writeFile(wb,'RamCable_'+new Date().toLocaleDateString('en-IN').replace(/\//g,'-')+'.xlsx');
 }
 
-// ── INIT ──
+// ── INITIAL RUN ──
 loadSavedLogo();
 updateCount();
 renderReport();
-
-// Hide loading overlay after Firebase connects (max 4 sec)
-setTimeout(function(){
-  var ol=document.getElementById('loading-overlay');
-  if(ol)ol.style.display='none';
-},4000);
-window._snap&&setTimeout(function(){
-  var ol=document.getElementById('loading-overlay');
-  if(ol)ol.style.display='none';
-},1500);
 </script>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js';
+import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, getDocs } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
+
+const cfg = {
+  apiKey: "AIzaSyBraoDUnDm0wRh-9CqsgvsHim5CFbq0_j8",
+  authDomain: "ram-cable-652a1.firebaseapp.com",
+  projectId: "ram-cable-652a1",
+  storageBucket: "ram-cable-652a1.firebasestorage.app",
+  messagingSenderId: "588763188093",
+  appId: "1:588763188093:web:5fa73cbca9d797a25cda14"
+};
+
+const app = initializeApp(cfg);
+const db = getFirestore(app);
+
+window._db = db;
+window._col = collection;
+window._doc = doc;
+window._set = setDoc;
+window._del = deleteDoc;
+window._snap = onSnapshot;
+window._get = getDocs;
+
+// Bind reactive hot reload sync streams safely
+window._snap(window._col(db, 'customers'), function(s) {
+  window.customers = [];
+  s.forEach(function(d) {
+    window.customers.push(Object.assign({}, d.data(), { _fid: d.id }));
+  });
+  window.updateCount();
+  window.renderReport();
+  var sr = document.getElementById('s-results');
+  if (sr && sr.dataset.active) sr.innerHTML = window.renderAllCustomers();
+  
+  // Deactivate spin blocker safely
+  var ol = document.getElementById('loading-overlay');
+  if (ol) ol.style.display = 'none';
+});
+
+window._snap(window._col(db, 'payments'), function(s) {
+  window.payments = [];
+  s.forEach(function(d) {
+    window.payments.push(Object.assign({}, d.data(), { _fid: d.id }));
+  });
+  window.renderReport();
+  var mm = document.getElementById('m-month');
+  if (mm && mm.dataset.active) window.renderMonthly();
+});
+
+window._fbReady = true;
+
+setTimeout(function() {
+  var b = document.getElementById('sync-bar');
+  if (b) {
+    b.style.opacity = '1';
+    setTimeout(function() { b.style.opacity = '0'; }, 2000);
+  }
+}, 1500);
+</script>
+
 </body>
 </html>
