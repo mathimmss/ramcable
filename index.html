@@ -9,19 +9,7 @@
 <meta name="theme-color" content="#0d3b8c">
 <link rel="manifest" href="manifest.json">
 <title>Ram Cable Networks</title>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-<script>
-firebase.initializeApp({
-  apiKey:"AIzaSyBraoDUnDm0wRh-9CqsgvsHim5CFbq0_j8",
-  authDomain:"ram-cable-652a1.firebaseapp.com",
-  projectId:"ram-cable-652a1",
-  storageBucket:"ram-cable-652a1.firebasestorage.app",
-  messagingSenderId:"588763188093",
-  appId:"1:588763188093:web:5fa73cbca9d797a25cda14"
-});
-var db=firebase.firestore();
-</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{font-family:Arial,sans-serif;background:#f0f4fa;color:#1a1a2e;min-height:100vh;font-size:15px}
@@ -189,7 +177,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <select id="p-month">
           <option>Jan 2025</option><option>Feb 2025</option><option>Mar 2025</option><option>Apr 2025</option><option>May 2025</option><option>Jun 2025</option>
           <option>Jul 2025</option><option>Aug 2025</option><option>Sep 2025</option><option>Oct 2025</option><option>Nov 2025</option><option>Dec 2025</option>
-          <option>Jan 2026</option><option>Feb 2026</option><option selected>Mar 2026</option><option>Apr 2026</option><option>May 2026</option><option>Jun 2026</option>
+          <option>Jan 2026</option><option>Feb 2026</option><option>Mar 2026</option><option>Apr 2026</option><option>May 2026</option><option selected>Jun 2026</option>
           <option>Jul 2026</option><option>Aug 2026</option><option>Sep 2026</option><option>Oct 2026</option><option>Nov 2026</option><option>Dec 2026</option>
         </select>
       </div>
@@ -215,7 +203,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <select id="m-month" onchange="onMonthChange()">
           <option>Jan 2025</option><option>Feb 2025</option><option>Mar 2025</option><option>Apr 2025</option><option>May 2025</option><option>Jun 2025</option>
           <option>Jul 2025</option><option>Aug 2025</option><option>Sep 2025</option><option>Oct 2025</option><option>Nov 2025</option><option>Dec 2025</option>
-          <option>Jan 2026</option><option>Feb 2026</option><option selected>Mar 2026</option><option>Apr 2026</option><option>May 2026</option><option>Jun 2026</option>
+          <option>Jan 2026</option><option>Feb 2026</option><option>Mar 2026</option><option>Apr 2026</option><option>May 2026</option><option selected>Jun 2026</option>
         </select>
       </div>
       <div class="field-row" style="margin-bottom:0">
@@ -251,100 +239,161 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   </div>
 </div>
 
+<!-- ── FIREBASE (single SDK, loaded first, blocking) ── -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script>
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', function() {
-    navigator.serviceWorker.register('./sw.js').then(function(reg) {
-      console.log('ServiceWorker registered successfully with scope: ', reg.scope);
-    }).catch(function(err) {
-      console.error('ServiceWorker registration failed: ', err);
-    });
-  });
-}
+firebase.initializeApp({
+  apiKey: "AIzaSyBraoDUnDm0wRh-9CqsgvsHim5CFbq0_j8",
+  authDomain: "ram-cable-652a1.firebaseapp.com",
+  projectId: "ram-cable-652a1",
+  storageBucket: "ram-cable-652a1.firebasestorage.app",
+  messagingSenderId: "588763188093",
+  appId: "1:588763188093:web:5fa73cbca9d797a25cda14"
+});
+var db = firebase.firestore();
 </script>
 
 <script>
 var customers=[],payments=[],selectedPayCust=null,deleteSerial=null;
 
-// ── UTILS ──
-function phoneHtml(phone){
-  if(!phone)return '';
-  var svg='<svg viewBox="0 0 24 24"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z"/></svg>';
-  return '<div class="phone-row"><span class="phone-text">'+svg+' '+phone+'</span><a class="call-btn" href="tel:'+phone+'" onclick="event.stopPropagation()">'+svg+' Call</a></div>';
+// ── SYNC STATUS ──
+function showSync(msg,type){
+  var el=document.getElementById('sync-bar');
+  el.textContent=msg;
+  el.style.background = type==='ok' ? '#1a7a1a' : '#c0392b';
+  el.style.opacity='1';
+  setTimeout(function(){el.style.opacity='0';},2500);
 }
 
-function updateCount(){
-  var n=customers.length;
-  var el = document.getElementById('cust-count');
-  if(el) el.textContent=n+' customer'+(n!==1?'s':'');
-}
-window.updateCount=updateCount;
+// ── FIREBASE REAL-TIME LISTENERS ──
+db.collection('customers').onSnapshot(function(snap){
+  customers=[];
+  snap.forEach(function(d){
+    var data=d.data();
+    var serial=(data.serial||data.serialNo||'').toString().trim();
+    var name=(data.name||data.customerName||'').toString().trim();
+    var box=(data.box||data.boxNo||'').toString().trim();
+    var pkg=(data.pkg||data.packageType||data.package||'').toString().trim();
+    var price=parseFloat(data.price||data.monthlyPrice||0);
+    if(!serial||serial==='undefined')return;
+    customers.push({
+      _fid:d.id,serial:serial,name:name,box:box,
+      address:(data.address||'').toString().trim(),
+      phone:(data.phone||data.phoneNo||'').toString().trim(),
+      pkg:pkg,price:price,joinDate:(data.joinDate||'').toString()
+    });
+  });
+  updateCount();
+  refreshViews();
+  document.getElementById('loading-overlay').style.display='none';
+  showSync('☁ Synced with cloud','ok');
+},function(err){
+  console.error('Customers sync error:',err);
+  document.getElementById('loading-overlay').style.display='none';
+  showSync('⚠ '+err.message,'err');
+});
 
-function showAlert(id,msg,type){
-  var el=document.getElementById(id);
-  if(el){
-    el.className='alert alert-'+type;el.textContent=msg;el.style.display='block';
-    setTimeout(function(){el.style.display='none';},3500);
-  }
+db.collection('payments').onSnapshot(function(snap){
+  payments=[];
+  snap.forEach(function(d){
+    var data=d.data();
+    var serial=(data.serial||data.customerId||'').toString().trim();
+    if(!serial||serial==='undefined')return;
+    payments.push({
+      _fid:d.id,serial:serial,
+      custName:(data.custName||data.customerName||'').toString().trim(),
+      month:(data.month||'').toString().trim(),
+      amount:parseFloat(data.amount||0),
+      status:(data.status||'pending').toString().toLowerCase().trim(),
+      date:(data.date||'').toString().trim()
+    });
+  });
+  refreshViews();
+},function(err){console.error('Payments sync error:',err);});
+
+function refreshViews(){
+  var tabs=['add','payment','search','monthly','report'];
+  var activeTab=document.querySelector('.tab.active');
+  if(!activeTab)return;
+  var idx=Array.from(document.querySelectorAll('.tab')).indexOf(activeTab);
+  var t=tabs[idx];
+  if(t==='report')renderReport();
+  if(t==='monthly'){var mEl=document.getElementById('m-month');if(mEl&&mEl.dataset.active)renderMonthly();}
+  if(t==='search'){var sr=document.getElementById('s-results');if(sr&&sr.dataset.active)sr.innerHTML=renderAllCustomers();}
 }
 
-function changeLogo(input){
-  if(!input.files||!input.files[0])return;
-  var r=new FileReader();
-  r.onload=function(e){
-    var url=e.target.result;
-    document.getElementById('logo-img').src=url;
-    document.getElementById('logo-img').style.display='block';
-    var ph=document.getElementById('logo-placeholder');
-    if(ph)ph.style.display='none';
-    try{localStorage.setItem('rc_logo',url);}catch(ex){}
-  };
-  r.readAsDataURL(input.files[0]);
-}
-
-function loadSavedLogo(){
-  try{
-    var s=localStorage.getItem('rc_logo');
-    if(s){
-      document.getElementById('logo-img').src=s;
-      document.getElementById('logo-img').style.display='block';
-      var ph=document.getElementById('logo-placeholder');
-      if(ph)ph.style.display='none';
-    }
-  }catch(e){}
-}
-
-// ── FIREBASE ACTIONS PROXIES ──
+// ── FIREBASE SAVE/DELETE ──
 function fbKey(str){return str.replace(/[^a-zA-Z0-9]/g,'_');}
 
-function fbSaveCust(c){
-  if(!window._db)return;
-  window._set(window._doc(window._db,'customers',fbKey(c.serial)),{
+function saveCust(c){
+  return db.collection('customers').doc(fbKey(c.serial)).set({
     serial:c.serial,name:c.name,box:c.box,address:c.address,
     phone:c.phone||'',pkg:c.pkg,price:c.price,
     joinDate:c.joinDate||'',createdAt:new Date().toISOString()
   });
 }
 
-function fbDelCust(serial){
-  if(!window._db)return;
-  window._del(window._doc(window._db,'customers',fbKey(serial)));
-  window._get(window._col(window._db,'payments')).then(function(snap){
-    snap.forEach(function(d){if(d.data().serial===serial)window._del(window._doc(window._db,'payments',d.id));});
+function deleteCust(serial){
+  db.collection('customers').doc(fbKey(serial)).delete();
+  db.collection('payments').get().then(function(snap){
+    snap.forEach(function(d){
+      if(d.data().serial===serial)db.collection('payments').doc(d.id).delete();
+    });
   });
 }
 
-function fbSavePay(p){
-  if(!window._db)return;
-  var key=fbKey(p.serial+'_'+p.month);
-  window._set(window._doc(window._db,'payments',key),{
+function savePay(p){
+  return db.collection('payments').doc(fbKey(p.serial+'_'+p.month)).set({
     serial:p.serial,custName:p.custName,month:p.month,
-    amount:Number(p.amount),status:p.status,date:p.date||'',
+    amount:p.amount,status:p.status,date:p.date||'',
     timestamp:new Date().toISOString()
   });
 }
 
-// ── NAVIGATION & VIEWS ──
+// ── UTILS ──
+function phoneHtml(phone){
+  if(!phone)return '';
+  var svg='<svg viewBox="0 0 24 24"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z"/></svg>';
+  return '<div class="phone-row"><span class="phone-text">'+svg+' '+phone+'</span>'+
+    '<a class="call-btn" href="tel:'+phone+'" onclick="event.stopPropagation()">'+svg+' Call</a></div>';
+}
+
+function updateCount(){
+  document.getElementById('cust-count').textContent=customers.length+' customer'+(customers.length!==1?'s':'');
+}
+
+function changeLogo(input){
+  if(!input.files||!input.files[0])return;
+  var r=new FileReader();
+  r.onload=function(e){
+    document.getElementById('logo-img').src=e.target.result;
+    document.getElementById('logo-img').style.display='block';
+    var ph=document.getElementById('logo-placeholder');if(ph)ph.style.display='none';
+    try{localStorage.setItem('rc_logo',e.target.result);}catch(ex){}
+  };r.readAsDataURL(input.files[0]);
+}
+
+function loadLogo(){
+  try{
+    var s=localStorage.getItem('rc_logo');
+    if(s){document.getElementById('logo-img').src=s;document.getElementById('logo-img').style.display='block';
+      var ph=document.getElementById('logo-placeholder');if(ph)ph.style.display='none';}
+  }catch(e){}
+}
+
+function showAlert(id,msg,type){
+  var el=document.getElementById(id);
+  el.className='alert alert-'+type;el.textContent=msg;el.style.display='block';
+  setTimeout(function(){el.style.display='none';},3500);
+}
+
+function handlePkgSelect(){
+  document.getElementById('a-pkg-custom').style.display=
+    document.getElementById('a-pkg-select').value==='custom'?'block':'none';
+}
+
+// ── TABS ──
 function showTab(t){
   document.querySelectorAll('.section').forEach(function(s){s.classList.remove('active');});
   document.querySelectorAll('.tab').forEach(function(tb){tb.classList.remove('active');});
@@ -353,24 +402,28 @@ function showTab(t){
     if(x===t)document.querySelectorAll('.tab')[i].classList.add('active');
   });
   if(t==='report')renderReport();
-  if(t==='monthly')onMonthChange();
-  if(t==='search'){
-    var sr=document.getElementById('s-query');sr.value='';
-    var res=document.getElementById('s-results');
-    res.dataset.active='1';
-    res.innerHTML=renderAllCustomers();
+  if(t==='monthly'){
+    var mEl=document.getElementById('m-month');if(mEl)mEl.dataset.active='1';
+    onMonthChange();
   } else {
-    var res2=document.getElementById('s-results');
-    if(res2)delete res2.dataset.active;
+    var mEl2=document.getElementById('m-month');if(mEl2)delete mEl2.dataset.active;
+  }
+  if(t==='search'){
+    document.getElementById('s-query').value='';
+    var sr=document.getElementById('s-results');
+    sr.dataset.active='1';
+    sr.innerHTML=renderAllCustomers();
+  } else {
+    var sr2=document.getElementById('s-results');if(sr2)delete sr2.dataset.active;
+  }
+  if(t==='payment'){
+    document.getElementById('p-search').value='';
+    document.getElementById('p-results').innerHTML='';
+    document.getElementById('pay-form-card').style.display='none';
   }
 }
 
-function handlePkgSelect(){
-  document.getElementById('a-pkg-custom').style.display=
-    document.getElementById('a-pkg-select').value==='custom'?'block':'none';
-}
-
-// ── CUSTOMER ENGINE ──
+// ── ADD CUSTOMER ──
 function addCustomer(){
   var serial=document.getElementById('a-serial').value.trim();
   var name=document.getElementById('a-name').value.trim();
@@ -381,16 +434,18 @@ function addCustomer(){
   var pkg=pkgSel==='custom'?document.getElementById('a-pkg-custom').value.trim():pkgSel;
   var price=document.getElementById('a-price').value.trim();
   if(!serial||!name||!box||!address||!phone||!pkg||!price){showAlert('add-alert','Please fill in all fields.','error');return;}
-  if(customers.find(function(c){return c.serial===serial;})){showAlert('add-alert','Serial number already exists.','error');return;}
-  var cust={serial:serial,name:name,box:box,address:address,phone:phone,pkg:pkg,
-    price:parseFloat(price),joinDate:new Date().toISOString().split('T')[0]};
-  fbSaveCust(cust);
-  showAlert('add-alert','Customer "'+name+'" saved to cloud!','success');
-  ['a-serial','a-name','a-box','a-address','a-phone','a-price'].forEach(function(id){document.getElementById(id).value='';});
-  document.getElementById('a-pkg-select').value='';
-  document.getElementById('a-pkg-custom').style.display='none';
+  if(customers.find(function(c){return c.serial===serial;})){showAlert('add-alert','Serial number already exists!','error');return;}
+  saveCust({serial:serial,name:name,box:box,address:address,phone:phone,pkg:pkg,
+    price:parseFloat(price),joinDate:new Date().toISOString().split('T')[0]})
+  .then(function(){
+    showAlert('add-alert','Customer "'+name+'" saved to cloud! ☁','success');
+    ['a-serial','a-name','a-box','a-address','a-phone','a-price'].forEach(function(id){document.getElementById(id).value='';});
+    document.getElementById('a-pkg-select').value='';
+    document.getElementById('a-pkg-custom').style.display='none';
+  }).catch(function(e){showAlert('add-alert','Error: '+e.message,'error');});
 }
 
+// ── DELETE ──
 function askDelete(serial,name,event){
   event.stopPropagation();deleteSerial=serial;
   document.getElementById('confirm-msg').textContent='Delete "'+name+'"? All payment records will also be deleted.';
@@ -399,46 +454,45 @@ function askDelete(serial,name,event){
 function closeConfirm(){document.getElementById('confirm-box').classList.remove('open');deleteSerial=null;}
 function confirmDelete(){
   if(!deleteSerial)return;
-  fbDelCust(deleteSerial);
+  deleteCust(deleteSerial);
   closeConfirm();
   document.getElementById('detail-modal').classList.remove('open');
-  showTab('search');
 }
 
-// ── RECORD PAYMENT OPERATIONS ──
+// ── PAYMENT SEARCH ──
 function searchForPayment(){
   var q=document.getElementById('p-search').value.trim().toLowerCase();
   var res=document.getElementById('p-results');
   if(!q){res.innerHTML='';document.getElementById('pay-form-card').style.display='none';return;}
-  
   var found=customers.filter(function(c){
-    // Added safe checks using (c.field && ...) to prevent crashes on missing or undefined data
-    var serialMatch = c.serial ? String(c.serial).toLowerCase().includes(q) : false;
-    var nameMatch = c.name ? String(c.name).toLowerCase().includes(q) : false;
-    var boxMatch = c.box ? String(c.box).toLowerCase().includes(q) : false;
-    var phoneMatch = c.phone ? String(c.phone).includes(q) : false;
-    
-    return serialMatch || nameMatch || boxMatch || phoneMatch;
+    return (c.serial||'').toLowerCase().includes(q)||
+           (c.name||'').toLowerCase().includes(q)||
+           (c.box||'').toLowerCase().includes(q)||
+           (c.phone||'').includes(q);
   });
-  
   if(!found.length){res.innerHTML='<div class="empty">No customers found.</div>';document.getElementById('pay-form-card').style.display='none';return;}
   res.innerHTML=found.map(function(c){
-    return '<div class="customer-card" onclick="selectPayCust(\''+(c.serial || '')+'\')">'+
-      '<div class="cust-row"><span class="cust-name">'+(c.name || 'Unnamed')+'</span><span class="badge badge-brand">'+(c.serial || 'N/A')+'</span></div>'+
-      '<div class="cust-detail">Box: '+(c.box || 'N/A')+' | '+(c.pkg || 'N/A')+' | Rs.'+(c.price || 0)+'/mo</div>'+phoneHtml(c.phone)+'</div>';
+    return '<div class="customer-card" onclick="selectPayCust(\''+c.serial+'\')">'+
+      '<div class="cust-row"><span class="cust-name">'+(c.name||'Unknown')+'</span>'+
+      '<span class="badge badge-brand">'+(c.serial||'-')+'</span></div>'+
+      '<div class="cust-detail">Box: '+(c.box||'-')+' | '+(c.pkg||'-')+' | Rs.'+(c.price||0)+'/mo</div>'+
+      phoneHtml(c.phone)+'</div>';
   }).join('');
 }
 
 function selectPayCust(serial){
   selectedPayCust=customers.find(function(c){return c.serial===serial;});
+  if(!selectedPayCust)return;
   document.getElementById('p-results').innerHTML='';
   document.getElementById('p-search').value='';
   document.getElementById('pay-form-card').style.display='block';
-  document.getElementById('p-amount').value=selectedPayCust.price;
+  document.getElementById('p-amount').value=selectedPayCust.price||'';
   document.getElementById('p-date').value=new Date().toISOString().split('T')[0];
   document.getElementById('pay-cust-info').innerHTML=
-    '<div class="cust-row"><span class="cust-name">'+selectedPayCust.name+'</span><span class="badge badge-brand">'+selectedPayCust.serial+'</span></div>'+
-    '<div class="cust-detail" style="margin-top:4px">Box: '+selectedPayCust.box+' | '+selectedPayCust.pkg+' | Rs.'+selectedPayCust.price+'/mo</div>'+
+    '<div class="cust-row"><span class="cust-name">'+(selectedPayCust.name||'')+'</span>'+
+    '<span class="badge badge-brand">'+(selectedPayCust.serial||'')+'</span></div>'+
+    '<div class="cust-detail" style="margin-top:4px">Box: '+(selectedPayCust.box||'')+
+    ' | '+(selectedPayCust.pkg||'')+' | Rs.'+(selectedPayCust.price||0)+'/mo</div>'+
     phoneHtml(selectedPayCust.phone);
 }
 
@@ -448,20 +502,23 @@ function recordPayment(){
   var amount=parseFloat(document.getElementById('p-amount').value);
   var status=document.getElementById('p-status').value;
   var sd=document.getElementById('p-date').value;
-  var dateDisplay=sd?new Date(sd).toLocaleDateString('en-IN'):new Date().toLocaleDateString('en-IN');
+  var dateD=sd?new Date(sd).toLocaleDateString('en-IN'):new Date().toLocaleDateString('en-IN');
   if(!amount){showAlert('pay-alert','Please enter an amount.','error');return;}
-  fbSavePay({serial:selectedPayCust.serial,custName:selectedPayCust.name,month:month,amount:amount,status:status,date:dateDisplay});
-  showAlert('pay-alert','Payment recorded for '+selectedPayCust.name+' — '+month,'success');
-  document.getElementById('pay-form-card').style.display='none';
-  selectedPayCust=null;
+  savePay({serial:selectedPayCust.serial,custName:selectedPayCust.name,month:month,amount:amount,status:status,date:dateD})
+  .then(function(){
+    showAlert('pay-alert','Payment recorded for '+(selectedPayCust.name||'')+' — '+month+' ☁','success');
+    document.getElementById('pay-form-card').style.display='none';
+    selectedPayCust=null;
+  }).catch(function(e){showAlert('pay-alert','Error: '+e.message,'error');});
 }
 
-// ── CUSTOMER CARD GENERATORS ──
+// ── CARDS ──
 function cardHtml(c,onclick){
   return '<div class="customer-card" onclick="'+onclick+'">'+
-    '<div class="cust-row"><span class="cust-name">'+c.name+'</span><span class="badge badge-brand">'+c.serial+'</span></div>'+
-    '<div class="cust-detail" style="margin-top:3px">Box: '+c.box+' | '+c.pkg+' | Rs.'+c.price+'/mo</div>'+
-    '<div class="cust-detail" style="margin-top:2px">'+c.address+'</div>'+
+    '<div class="cust-row"><span class="cust-name">'+(c.name||'Unknown')+'</span>'+
+    '<span class="badge badge-brand">'+(c.serial||'-')+'</span></div>'+
+    '<div class="cust-detail" style="margin-top:3px">Box: '+(c.box||'-')+' | '+(c.pkg||'-')+' | Rs.'+(c.price||0)+'/mo</div>'+
+    '<div class="cust-detail" style="margin-top:2px">'+(c.address||'')+'</div>'+
     phoneHtml(c.phone)+'</div>';
 }
 
@@ -469,39 +526,32 @@ function renderAllCustomers(){
   if(!customers.length)return '<div class="empty">No customers yet. Add from the Add tab.</div>';
   return customers.map(function(c){return cardHtml(c,"showDetail('"+c.serial+"')");}).join('');
 }
-window.renderAllCustomers=renderAllCustomers;
 
 function searchCustomers(){
   var q=document.getElementById('s-query').value.trim().toLowerCase();
   var res=document.getElementById('s-results');
   if(!q){res.innerHTML=renderAllCustomers();return;}
-  
   var found=customers.filter(function(c){
-    var nameMatch = c.name ? String(c.name).toLowerCase().includes(q) : false;
-    var serialMatch = c.serial ? String(c.serial).toLowerCase().includes(q) : false;
-    var boxMatch = c.box ? String(c.box).toLowerCase().includes(q) : false;
-    var addressMatch = c.address ? String(c.address).toLowerCase().includes(q) : false;
-    var phoneMatch = c.phone ? String(c.phone).includes(q) : false;
-    
-    return nameMatch || serialMatch || boxMatch || addressMatch || phoneMatch;
+    return (c.name||'').toLowerCase().includes(q)||(c.serial||'').toLowerCase().includes(q)||
+      (c.box||'').toLowerCase().includes(q)||(c.address||'').toLowerCase().includes(q)||(c.phone||'').includes(q);
   });
-  
-  res.innerHTML=found.length?found.map(function(c){return cardHtml(c,"showDetail('"+(c.serial || '')+"')");}).join(''):
+  res.innerHTML=found.length?found.map(function(c){return cardHtml(c,"showDetail('"+c.serial+"')");}).join(''):
     '<div class="empty">No matching customers.</div>';
 }
-// ── MODAL MANAGEMENT ──
+
+// ── DETAIL ──
 function showDetail(serial){
   var c=customers.find(function(x){return x.serial===serial;});if(!c)return;
   var cp=payments.filter(function(p){return p.serial===serial;}).sort(function(a,b){return a.month>b.month?-1:1;});
-  var tot=cp.filter(function(p){return p.status!=='pending';}).reduce(function(s,p){return s+(Number(p.amount)||0);},0);
-  document.getElementById('modal-title').textContent=c.name;
+  var tot=cp.filter(function(p){return p.status!=='pending';}).reduce(function(s,p){return s+p.amount;},0);
+  document.getElementById('modal-title').textContent=c.name||'Customer';
   var h='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">';
-  h+='<div class="stat-card"><div class="stat-label">Serial no.</div><div class="stat-value">'+c.serial+'</div></div>';
-  h+='<div class="stat-card"><div class="stat-label">Box no.</div><div class="stat-value">'+c.box+'</div></div>';
-  h+='<div class="stat-card"><div class="stat-label">Package</div><div class="stat-value">'+c.pkg+'</div></div>';
-  h+='<div class="stat-card"><div class="stat-label">Monthly price</div><div class="stat-value">Rs.'+c.price+'</div></div></div>';
+  h+='<div class="stat-card"><div class="stat-label">Serial no.</div><div class="stat-value">'+(c.serial||'-')+'</div></div>';
+  h+='<div class="stat-card"><div class="stat-label">Box no.</div><div class="stat-value">'+(c.box||'-')+'</div></div>';
+  h+='<div class="stat-card"><div class="stat-label">Package</div><div class="stat-value">'+(c.pkg||'-')+'</div></div>';
+  h+='<div class="stat-card"><div class="stat-label">Monthly price</div><div class="stat-value">Rs.'+(c.price||0)+'</div></div></div>';
   h+='<div class="stat-card" style="margin-bottom:10px"><div class="stat-label">Phone</div>'+phoneHtml(c.phone)+'</div>';
-  h+='<div class="stat-card" style="margin-bottom:10px"><div class="stat-label">Address</div><div class="stat-value" style="font-size:14px;margin-top:4px">'+c.address+'</div></div>';
+  h+='<div class="stat-card" style="margin-bottom:10px"><div class="stat-label">Address</div><div class="stat-value" style="font-size:14px;margin-top:4px">'+(c.address||'-')+'</div></div>';
   h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">';
   h+='<div class="stat-card"><div class="stat-label">Payments recorded</div><div class="stat-val">'+cp.length+'</div></div>';
   h+='<div class="stat-card"><div class="stat-label">Total collected</div><div class="stat-val" style="font-size:18px">Rs.'+tot.toLocaleString('en-IN')+'</div></div></div>';
@@ -509,69 +559,61 @@ function showDetail(serial){
   if(cp.length){
     cp.forEach(function(p){
       var bc=p.status==='paid'?'badge-green':p.status==='partial'?'badge-amber':'badge-red';
-      h+='<div class="payment-row"><div><div class="pay-month">'+p.month+'</div><div style="font-size:11px;color:#888">'+p.date+'</div></div>'+
-        '<div style="text-align:right"><div style="font-size:14px;font-weight:700;color:#0d3b8c">Rs.'+(Number(p.amount)||0).toLocaleString('en-IN')+'</div>'+
-        '<span class="badge '+bc+'">'+p.status.charAt(0).toUpperCase()+p.status.slice(1)+'</span></div></div>';
+      h+='<div class="payment-row"><div><div class="pay-month">'+(p.month||'')+'</div>'+
+        '<div style="font-size:11px;color:#888">'+(p.date||'')+'</div></div>'+
+        '<div style="text-align:right"><div style="font-size:14px;font-weight:700;color:#0d3b8c">Rs.'+p.amount.toLocaleString('en-IN')+'</div>'+
+        '<span class="badge '+bc+'">'+(p.status||'').charAt(0).toUpperCase()+(p.status||'').slice(1)+'</span></div></div>';
     });
   } else h+='<div style="color:#888;font-size:13px;padding:10px 0">No payments recorded yet.</div>';
-  h+='<button class="btn btn-danger" onclick="askDelete(\''+c.serial+'\',\''+c.name.replace(/'/g,"\\'")+ '\',event)">Delete this customer</button>';
+  h+='<button class="btn btn-danger" onclick="askDelete(\''+c.serial+'\',\''+(c.name||'').replace(/'/g,"\\'")+'\',event)">Delete this customer</button>';
   document.getElementById('modal-content').innerHTML=h;
   document.getElementById('detail-modal').classList.add('open');
 }
 function closeModal(e){if(e.target.id==='detail-modal')document.getElementById('detail-modal').classList.remove('open');}
 
-// ── MONTHLY CALENDAR DATA METRICS ──
+// ── MONTHLY ──
 var MONTHS=['Jan 2025','Feb 2025','Mar 2025','Apr 2025','May 2025','Jun 2025',
   'Jul 2025','Aug 2025','Sep 2025','Oct 2025','Nov 2025','Dec 2025',
   'Jan 2026','Feb 2026','Mar 2026','Apr 2026','May 2026','Jun 2026',
   'Jul 2026','Aug 2026','Sep 2026','Oct 2026','Nov 2026','Dec 2026'];
 
-function getJoinMonthIdx(c){
+function getJoinIdx(c){
   if(!c.joinDate)return 0;
   var d=new Date(c.joinDate);
   var mn=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()]+' '+d.getFullYear();
   var i=MONTHS.indexOf(mn);return i>=0?i:0;
 }
 
-function getCarryForward(currentMonth){
-  var ci=MONTHS.indexOf(currentMonth);if(ci<=0)return [];
+function getCarry(month){
+  var ci=MONTHS.indexOf(month);if(ci<=0)return [];
   return customers.map(function(c){
-    var ji=getJoinMonthIdx(c),unpaid=[];
+    var ji=getJoinIdx(c),un=[];
     for(var i=Math.max(0,ci-6,ji);i<ci;i++){
       var m=MONTHS[i];
       var p=payments.find(function(p){return p.serial===c.serial&&p.month===m;});
-      if(!p||p.status==='pending')unpaid.push(m);
+      if(!p||p.status==='pending')un.push(m);
     }
-    return unpaid.length?{customer:c,months:unpaid,total:unpaid.length*c.price}:null;
+    return un.length?{customer:c,months:un,total:un.length*c.price}:null;
   }).filter(Boolean);
 }
 
 function parseDate(ds){
   if(!ds)return new Date(0);
-  var pts=ds.split('/');
-  return pts.length===3?new Date(parseInt(pts[2]),parseInt(pts[1])-1,parseInt(pts[0])):new Date(ds);
+  var p=ds.split('/');
+  return p.length===3?new Date(parseInt(p[2]),parseInt(p[1])-1,parseInt(p[0])):new Date(ds);
 }
-
-function getDayFromDate(ds){
-  if(!ds)return 0;
-  var pts=ds.includes('/') ? ds.split('/') : ds.split('-');
-  return pts.length===3?(pts[0].length===4 ? parseInt(pts[2]) : parseInt(pts[0])):0;
-}
-
+function getDayNum(ds){if(!ds)return 0;var p=ds.split('/');return p.length===3?parseInt(p[0]):0;}
 function getDaysInMonth(ms){
   var mn=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  var pts=ms.split(' ');return new Date(parseInt(pts[1]),mn.indexOf(pts[0])+1,0).getDate();
+  var p=ms.split(' ');return new Date(parseInt(p[1]),mn.indexOf(p[0])+1,0).getDate();
 }
 
 function onMonthChange(){
   var month=document.getElementById('m-month').value;
-  var days=getDaysInMonth(month);
   var sel=document.getElementById('m-date');
-  if(!sel) return;
   sel.innerHTML='<option value="all">-- All days --</option>';
-  for(var d=1;d<=days;d++){
-    var opt=document.createElement('option');opt.value=d;opt.textContent='Day '+d;sel.appendChild(opt);
-  }
+  var days=getDaysInMonth(month);
+  for(var d=1;d<=days;d++){var o=document.createElement('option');o.value=d;o.textContent='Day '+d;sel.appendChild(o);}
   renderMonthly();
 }
 
@@ -582,10 +624,10 @@ function renderMonthly(){
   var mp=payments.filter(function(p){return p.month===month;});
   var paid=mp.filter(function(p){return p.status==='paid';});
   var pending=mp.filter(function(p){return p.status==='pending';});
-  var collected=mp.filter(function(p){return p.status!=='pending';}).reduce(function(s,p){return s+(Number(p.amount)||0);},0);
-  var totalExp=customers.reduce(function(s,c){return s+(Number(c.price)||0);},0);
+  var collected=mp.filter(function(p){return p.status!=='pending';}).reduce(function(s,p){return s+p.amount;},0);
+  var totalExp=customers.reduce(function(s,c){return s+c.price;},0);
   var notRec=customers.filter(function(c){return !mp.find(function(p){return p.serial===c.serial;});});
-  var carry=getCarryForward(month);
+  var carry=getCarry(month);
   var h='<div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:13px">';
   h+='<div class="stat-card"><div class="stat-label">Collected</div><div class="stat-val" style="font-size:18px">Rs.'+collected.toLocaleString('en-IN')+'</div></div>';
   h+='<div class="stat-card"><div class="stat-label">Expected</div><div class="stat-val" style="font-size:18px">Rs.'+totalExp.toLocaleString('en-IN')+'</div></div>';
@@ -596,19 +638,18 @@ function renderMonthly(){
     if(pap.length){
       var byDate={};
       pap.forEach(function(p){var d=p.date||'Unknown';if(!byDate[d])byDate[d]=[];byDate[d].push(p);});
-      var sortedD=Object.keys(byDate).sort(function(a,b){return parseDate(a)-parseDate(b);});
+      var sd=Object.keys(byDate).sort(function(a,b){return parseDate(a)-parseDate(b);});
       h+='<div class="section-title" style="color:#065f46">Date-wise payments</div>';
-      sortedD.forEach(function(date){
-        var dt=byDate[date].reduce(function(s,p){return s+(Number(p.amount)||0);},0);
-        var dn=getDayFromDate(date);
+      sd.forEach(function(date){
+        var dt=byDate[date].reduce(function(s,p){return s+p.amount;},0);
+        var dn=getDayNum(date);
         h+='<div class="card" style="padding:10px 14px;margin-bottom:8px;border-left:4px solid #0d3b8c">';
         h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
-        h+=(dn?'<div style="font-size:14px;font-weight:700;color:#0d3b8c">Day '+dn+' <span style="font-size:12px;color:#888">('+date+')</span></div>':
-          '<div style="font-size:14px;font-weight:700;color:#0d3b8c">'+date+'</div>');
+        h+=(dn?'<div style="font-size:14px;font-weight:700;color:#0d3b8c">Day '+dn+' <span style="font-size:12px;color:#888">('+date+')</span></div>':'<div style="font-size:14px;font-weight:700;color:#0d3b8c">'+date+'</div>');
         h+='<div style="font-size:12px;font-weight:700;color:#065f46;background:#d1fae5;padding:3px 9px;border-radius:20px">Rs.'+dt.toLocaleString('en-IN')+'</div></div>';
         byDate[date].forEach(function(p){
-          h+='<div class="payment-row"><div><div class="pay-month">'+p.custName+'</div><div class="cust-detail">'+p.serial+'</div></div>'+
-            '<div style="text-align:right"><div style="font-weight:700;color:#0d3b8c">Rs.'+(Number(p.amount)||0).toLocaleString('en-IN')+'</div>'+
+          h+='<div class="payment-row"><div><div class="pay-month">'+(p.custName||'')+'</div><div class="cust-detail">'+(p.serial||'')+'</div></div>'+
+            '<div style="text-align:right"><div style="font-weight:700;color:#0d3b8c">Rs.'+p.amount.toLocaleString('en-IN')+'</div>'+
             '<span class="badge '+(p.status==='paid'?'badge-green':'badge-amber')+'">'+p.status+'</span></div></div>';
         });
         h+='</div>';
@@ -618,34 +659,36 @@ function renderMonthly(){
       h+='<div class="section-title" style="color:#b45309">Pending from previous months</div>';
       h+='<div class="card" style="padding:8px 14px;border-color:#f5c518">';
       carry.forEach(function(item){
-        h+='<div class="pending-carry"><div class="pc-name">'+item.customer.name+' <span class="badge badge-orange">'+item.months.length+' month'+(item.months.length>1?'s':'')+' due</span></div>'+
-          '<div class="pc-detail">'+item.customer.serial+' | Box: '+item.customer.box+'</div>'+
+        h+='<div class="pending-carry"><div class="pc-name">'+(item.customer.name||'')+'<span class="badge badge-orange" style="margin-left:6px">'+item.months.length+' month'+(item.months.length>1?'s':'')+' due</span></div>'+
+          '<div class="pc-detail">'+(item.customer.serial||'')+' | Box: '+(item.customer.box||'')+'</div>'+
           phoneHtml(item.customer.phone)+
-          '<div class="pc-months">Unpaid: '+item.months.join(', ')+' | Total due: Rs.'+item.total.toLocaleString('en-IN')+'</div></div>';
+          '<div class="pc-months">Unpaid: '+item.months.join(', ')+' | Due: Rs.'+item.total.toLocaleString('en-IN')+'</div></div>';
       });
       h+='</div>';
     }
     if(notRec.length){
-      h+='<div class="section-title" style="margin-top:4px">Not yet recorded this month</div><div class="card" style="padding:8px 14px">';
+      h+='<div class="section-title" style="margin-top:4px">Not yet recorded</div><div class="card" style="padding:8px 14px">';
       notRec.forEach(function(c){
-        h+='<div class="payment-row"><div><div class="pay-month">'+c.name+'</div><div class="cust-detail">'+c.serial+' | '+c.box+'</div>'+phoneHtml(c.phone)+'</div>'+
-          '<div style="text-align:right"><div style="color:#0d3b8c;font-weight:700">Rs.'+c.price+'</div><span class="badge badge-red">Not recorded</span></div></div>';
+        h+='<div class="payment-row"><div><div class="pay-month">'+(c.name||'')+'</div>'+
+          '<div class="cust-detail">'+(c.serial||'')+' | '+(c.box||'')+'</div>'+phoneHtml(c.phone)+'</div>'+
+          '<div style="text-align:right"><div style="color:#0d3b8c;font-weight:700">Rs.'+(c.price||0)+'</div>'+
+          '<span class="badge badge-red">Not recorded</span></div></div>';
       });
       h+='</div>';
     }
   } else {
     var dn=parseInt(selDay);
-    var dp=pap.filter(function(p){return getDayFromDate(p.date)===dn;});
+    var dp=pap.filter(function(p){return getDayNum(p.date)===dn;});
     h+='<div class="section-title" style="color:#065f46">Day '+dn+' — Payments</div>';
     if(dp.length){
-      var dt=dp.reduce(function(s,p){return s+(Number(p.amount)||0);},0);
+      var dt=dp.reduce(function(s,p){return s+p.amount;},0);
       h+='<div class="card" style="padding:10px 14px;border-left:4px solid #0d3b8c">';
       h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">';
       h+='<div style="font-size:14px;font-weight:700;color:#0d3b8c">Day '+dn+' <span style="font-size:12px;color:#888">('+dp[0].date+')</span></div>';
       h+='<div style="font-size:13px;font-weight:700;color:#065f46;background:#d1fae5;padding:4px 11px;border-radius:20px">Total: Rs.'+dt.toLocaleString('en-IN')+'</div></div>';
       dp.forEach(function(p){
-        h+='<div class="payment-row"><div><div class="pay-month">'+p.custName+'</div><div class="cust-detail">'+p.serial+' | '+p.date+'</div></div>'+
-          '<div style="text-align:right"><div style="font-weight:700;color:#0d3b8c">Rs.'+(Number(p.amount)||0).toLocaleString('en-IN')+'</div>'+
+        h+='<div class="payment-row"><div><div class="pay-month">'+(p.custName||'')+'</div><div class="cust-detail">'+(p.serial||'')+' | '+(p.date||'')+'</div></div>'+
+          '<div style="text-align:right"><div style="font-weight:700;color:#0d3b8c">Rs.'+p.amount.toLocaleString('en-IN')+'</div>'+
           '<span class="badge '+(p.status==='paid'?'badge-green':'badge-amber')+'">'+p.status+'</span></div></div>';
       });
       h+='</div>';
@@ -653,17 +696,15 @@ function renderMonthly(){
   }
   document.getElementById('monthly-results').innerHTML=h;
 }
-window.renderMonthly=renderMonthly;
 
-// ── DATA METRICS REPORTS ──
+// ── REPORT ──
 function renderReport(){
   var total=customers.length;
-  var totalExp=customers.reduce(function(s,c){return s+(Number(c.price)||0);},0);
-  var totalCol=payments.filter(function(p){return p.status!=='pending';}).reduce(function(s,p){return s+(Number(p.amount)||0);},0);
-  var pkgG={};customers.forEach(function(c){pkgG[c.pkg]=(pkgG[c.pkg]||0)+1;});
+  var totalExp=customers.reduce(function(s,c){return s+c.price;},0);
+  var totalCol=payments.filter(function(p){return p.status!=='pending';}).reduce(function(s,p){return s+p.amount;},0);
+  var pkgG={};customers.forEach(function(c){if(c.pkg)pkgG[c.pkg]=(pkgG[c.pkg]||0)+1;});
   var h='<button class="btn btn-export" onclick="exportToExcel()">'+
-    '<svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM8 17l2.5-3.5L8 10h1.5l1.5 2.1 1.5-2.1H14l-2.5 3.5L14 17h-1.5L11 14.8 9.5 17H8z"/></svg>'+
-    'Export to Excel</button>';
+    '<svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM8 17l2.5-3.5L8 10h1.5l1.5 2.1 1.5-2.1H14l-2.5 3.5L14 17h-1.5L11 14.8 9.5 17H8z"/></svg>Export to Excel</button>';
   h+='<div class="stat-grid">';
   h+='<div class="stat-card"><div class="stat-label">Total customers</div><div class="stat-val">'+total+'</div></div>';
   h+='<div class="stat-card"><div class="stat-label">Monthly revenue</div><div class="stat-val" style="font-size:18px">Rs.'+totalExp.toLocaleString('en-IN')+'</div></div>';
@@ -678,109 +719,45 @@ function renderReport(){
   else h+='<div class="empty">No customers yet.</div>';
   document.getElementById('report-content').innerHTML=h;
 }
-window.renderReport=renderReport;
 
-// ── EXCEL SPREADSHEET BUILDER ──
+// ── EXCEL ──
 function exportToExcel(){
   if(!customers.length){alert('No customers to export.');return;}
   var wb=XLSX.utils.book_new();
-  var usedMonths=MONTHS.filter(function(m){return payments.some(function(p){return p.month===m;});});
+  var usedM=MONTHS.filter(function(m){return payments.some(function(p){return p.month===m;});});
   var hdr=['Serial No.','Customer Name','Box No.','Address','Phone','Package','Monthly Price (Rs)','Join Date'];
-  usedMonths.forEach(function(m){hdr.push(m+' - Date',m+' - Amount',m+' - Status');});
+  usedM.forEach(function(m){hdr.push(m+' - Date',m+' - Amount',m+' - Status');});
   var rows=[hdr];
   customers.forEach(function(c){
     var row=[c.serial,c.name,c.box,c.address,c.phone||'',c.pkg,c.price,c.joinDate||''];
-    usedMonths.forEach(function(m){
+    usedM.forEach(function(m){
       var p=payments.find(function(p){return p.serial===c.serial&&p.month===m;});
-      row.push(p?p.date:'',p?p.amount:'',p?p.status.charAt(0).toUpperCase()+p.status.slice(1):'Not Paid');
+      row.push(p?p.date:'',p?p.amount:'',p?p.status:'Not Paid');
     });
     rows.push(row);
   });
-  var ws1=XLSX.utils.aoa_to_sheet(rows);
-  XLSX.utils.book_append_sheet(wb,ws1,'Customers');
-  var pr=[['Serial No.','Customer Name','Box No.','Package','Month','Date','Amount (Rs)','Status']];
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Customers');
+  var pr=[['Serial No.','Customer Name','Box','Package','Month','Date','Amount','Status']];
   payments.slice().sort(function(a,b){return a.month>b.month?1:-1;}).forEach(function(p){
     var c=customers.find(function(c){return c.serial===p.serial;})||{};
     pr.push([p.serial,p.custName,c.box||'',c.pkg||'',p.month,p.date||'',p.amount,p.status]);
   });
-  var ws2=XLSX.utils.aoa_to_sheet(pr);
-  XLSX.utils.book_append_sheet(wb,ws2,'All Payments');
-  var totalExp=customers.reduce(function(s,c){return s+(Number(c.price)||0);},0);
-  var totalCol=payments.filter(function(p){return p.status!=='pending';}).reduce(function(s,p){return s+(Number(p.amount)||0);},0);
-  var pkgG={};customers.forEach(function(c){pkgG[c.pkg]=(pkgG[c.pkg]||0)+1;});
-  var sr=[['Ram Cable Networks - Report'],['Generated',new Date().toLocaleDateString('en-IN')],[],
-    ['Total Customers',customers.length],['Monthly Revenue (Rs)',totalExp],['All-time Collected (Rs)',totalCol],[],
-    ['Package','Customers'],...Object.entries(pkgG).sort(function(a,b){return b[1]-a[1];})];
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(pr),'All Payments');
+  var te=customers.reduce(function(s,c){return s+c.price;},0);
+  var tc=payments.filter(function(p){return p.status!=='pending';}).reduce(function(s,p){return s+p.amount;},0);
+  var pg={};customers.forEach(function(c){if(c.pkg)pg[c.pkg]=(pg[c.pkg]||0)+1;});
+  var sr=[['Ram Cable Networks'],['Generated',new Date().toLocaleDateString('en-IN')],[],
+    ['Total Customers',customers.length],['Monthly Revenue',te],['All-time Collected',tc],[],
+    ['Package','Customers']];
+  Object.entries(pg).forEach(function(e){sr.push(e);});
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(sr),'Summary');
   XLSX.writeFile(wb,'RamCable_'+new Date().toLocaleDateString('en-IN').replace(/\//g,'-')+'.xlsx');
 }
 
-// ── INITIAL RUN ──
-loadSavedLogo();
-updateCount();
+// ── INIT ──
+loadLogo();
 renderReport();
+setTimeout(function(){document.getElementById('loading-overlay').style.display='none';},5000);
 </script>
-
-<script type="module">
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js';
-import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, getDocs } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
-
-const cfg = {
-  apiKey: "AIzaSyBraoDUnDm0wRh-9CqsgvsHim5CFbq0_j8",
-  authDomain: "ram-cable-652a1.firebaseapp.com",
-  projectId: "ram-cable-652a1",
-  storageBucket: "ram-cable-652a1.firebasestorage.app",
-  messagingSenderId: "588763188093",
-  appId: "1:588763188093:web:5fa73cbca9d797a25cda14"
-};
-
-const app = initializeApp(cfg);
-const db = getFirestore(app);
-
-window._db = db;
-window._col = collection;
-window._doc = doc;
-window._set = setDoc;
-window._del = deleteDoc;
-window._snap = onSnapshot;
-window._get = getDocs;
-
-// Bind reactive hot reload sync streams safely
-window._snap(window._col(db, 'customers'), function(s) {
-  window.customers = [];
-  s.forEach(function(d) {
-    window.customers.push(Object.assign({}, d.data(), { _fid: d.id }));
-  });
-  window.updateCount();
-  window.renderReport();
-  var sr = document.getElementById('s-results');
-  if (sr && sr.dataset.active) sr.innerHTML = window.renderAllCustomers();
-  
-  // Deactivate spin blocker safely
-  var ol = document.getElementById('loading-overlay');
-  if (ol) ol.style.display = 'none';
-});
-
-window._snap(window._col(db, 'payments'), function(s) {
-  window.payments = [];
-  s.forEach(function(d) {
-    window.payments.push(Object.assign({}, d.data(), { _fid: d.id }));
-  });
-  window.renderReport();
-  var mm = document.getElementById('m-month');
-  if (mm && mm.dataset.active) window.renderMonthly();
-});
-
-window._fbReady = true;
-
-setTimeout(function() {
-  var b = document.getElementById('sync-bar');
-  if (b) {
-    b.style.opacity = '1';
-    setTimeout(function() { b.style.opacity = '0'; }, 2000);
-  }
-}, 1500);
-</script>
-
 </body>
 </html>
