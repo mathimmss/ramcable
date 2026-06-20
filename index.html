@@ -9,8 +9,19 @@
 <meta name="theme-color" content="#0d3b8c">
 <link rel="manifest" href="manifest.json">
 <title>Ram Cable Networks</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+firebase.initializeApp({
+  apiKey:"AIzaSyBraoDUnDm0wRh-9CqsgvsHim5CFbq0_j8",
+  authDomain:"ram-cable-652a1.firebaseapp.com",
+  projectId:"ram-cable-652a1",
+  storageBucket:"ram-cable-652a1.firebasestorage.app",
+  messagingSenderId:"588763188093",
+  appId:"1:588763188093:web:5fa73cbca9d797a25cda14"
+});
+var db=firebase.firestore();
+</script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{font-family:Arial,sans-serif;background:#f0f4fa;color:#1a1a2e;min-height:100vh;font-size:15px}
